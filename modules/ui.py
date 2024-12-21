@@ -127,222 +127,139 @@ def load_switch_states():
 def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.CTk:
     global source_label, target_label, status_label, show_fps_switch
 
-    load_switch_states()
+    # Initialize window
+    root = init_window(destroy)
+    
+    # Create main sections
+    create_image_preview_section(root)
+    create_control_buttons_section(root)
+    create_settings_section(root)
+    create_action_buttons_section(root, start, destroy)  # Pass destroy here
+    create_camera_section(root)
+    create_status_section(root)
+    
+    return root
 
+def init_window(destroy: Callable[[], None]) -> ctk.CTk:
+    """Initialize the main window with basic settings"""
+    load_switch_states()
     ctk.deactivate_automatic_dpi_awareness()
     ctk.set_appearance_mode("system")
     ctk.set_default_color_theme(resolve_relative_path("ui.json"))
 
     root = ctk.CTk()
     root.minsize(ROOT_WIDTH, ROOT_HEIGHT)
-    root.title(
-        f"{modules.metadata.name} {modules.metadata.version} {modules.metadata.edition}"
-    )
+    root.title(f"{modules.metadata.name} {modules.metadata.version} {modules.metadata.edition}")
     root.configure()
     root.protocol("WM_DELETE_WINDOW", lambda: destroy())
+    return root
 
+def create_image_preview_section(root: ctk.CTk) -> None:
+    """Create the image preview area with source and target images"""
+    global source_label, target_label
+    
     source_label = ctk.CTkLabel(root, text=None)
     source_label.place(relx=0.1, rely=0.1, relwidth=0.3, relheight=0.25)
 
     target_label = ctk.CTkLabel(root, text=None)
     target_label.place(relx=0.6, rely=0.1, relwidth=0.3, relheight=0.25)
 
+def create_control_buttons_section(root: ctk.CTk) -> None:
+    """Create the main control buttons (Select face, swap, select target)"""
     select_face_button = ctk.CTkButton(
-        root, text="Select a face", cursor="hand2", command=lambda: select_source_path()
+        root, text="Select a face", cursor="hand2", 
+        command=lambda: select_source_path()
     )
     select_face_button.place(relx=0.1, rely=0.4, relwidth=0.3, relheight=0.1)
 
     swap_faces_button = ctk.CTkButton(
-        root, text="↔", cursor="hand2", command=lambda: swap_faces_paths()
+        root, text="↔", cursor="hand2", 
+        command=lambda: swap_faces_paths()
     )
     swap_faces_button.place(relx=0.45, rely=0.4, relwidth=0.1, relheight=0.1)
 
     select_target_button = ctk.CTkButton(
-        root,
-        text="Select a target",
-        cursor="hand2",
-        command=lambda: select_target_path(),
+        root, text="Select a target", cursor="hand2",
+        command=lambda: select_target_path()
     )
     select_target_button.place(relx=0.6, rely=0.4, relwidth=0.3, relheight=0.1)
 
-    keep_fps_value = ctk.BooleanVar(value=modules.globals.keep_fps)
-    keep_fps_checkbox = ctk.CTkSwitch(
-        root,
-        text="Keep fps",
-        variable=keep_fps_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "keep_fps", keep_fps_value.get()),
-            save_switch_states(),
-        ),
-    )
-    keep_fps_checkbox.place(relx=0.1, rely=0.6)
+def create_settings_section(root: ctk.CTk) -> None:
+    """Create all the settings switches"""
+    # Left column switches
+    create_switch(root, "Mouth Mask", "mouth_mask", 0.1, 0.55)
+    create_switch(root, "Keep fps", "keep_fps", 0.1, 0.6)
+    create_switch(root, "Keep frames", "keep_frames", 0.1, 0.65)
+    create_switch(root, "Face Enhancer", "face_enhancer", 0.1, 0.7, is_fp_ui=True)
+    create_switch(root, "Map faces", "map_faces", 0.1, 0.75)
 
-    keep_frames_value = ctk.BooleanVar(value=modules.globals.keep_frames)
-    keep_frames_switch = ctk.CTkSwitch(
-        root,
-        text="Keep frames",
-        variable=keep_frames_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "keep_frames", keep_frames_value.get()),
-            save_switch_states(),
-        ),
-    )
-    keep_frames_switch.place(relx=0.1, rely=0.65)
+    # Right column switches
+    create_switch(root, "Show Mouth Mask Box", "show_mouth_mask_box", 0.6, 0.55)
+    create_switch(root, "Keep audio", "keep_audio", 0.6, 0.6)
+    create_switch(root, "Many faces", "many_faces", 0.6, 0.65)
+    create_switch(root, "Fix Blueish Cam", "color_correction", 0.6, 0.70)
+    create_switch(root, "Show FPS", "show_fps", 0.6, 0.75)
 
-    enhancer_value = ctk.BooleanVar(value=modules.globals.fp_ui["face_enhancer"])
-    enhancer_switch = ctk.CTkSwitch(
-        root,
-        text="Face Enhancer",
-        variable=enhancer_value,
-        cursor="hand2",
-        command=lambda: (
-            update_tumbler("face_enhancer", enhancer_value.get()),
-            save_switch_states(),
-        ),
-    )
-    enhancer_switch.place(relx=0.1, rely=0.7)
+def create_action_buttons_section(root: ctk.CTk, start: Callable[[], None], destroy: Callable[[], None]) -> None:
+    """Create the main action buttons (Start, Reset, Destroy, Preview)"""
+    # Create a frame for buttons
+    button_frame = ctk.CTkFrame(root, fg_color="transparent")
+    button_frame.place(relx=0.1, rely=0.80, relwidth=0.8, relheight=0.05)
 
-    keep_audio_value = ctk.BooleanVar(value=modules.globals.keep_audio)
-    keep_audio_switch = ctk.CTkSwitch(
-        root,
-        text="Keep audio",
-        variable=keep_audio_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "keep_audio", keep_audio_value.get()),
-            save_switch_states(),
-        ),
-    )
-    keep_audio_switch.place(relx=0.6, rely=0.6)
+    # Configure even columns
+    for i in range(4):
+        button_frame.grid_columnconfigure(i, weight=1)
 
-    many_faces_value = ctk.BooleanVar(value=modules.globals.many_faces)
-    many_faces_switch = ctk.CTkSwitch(
-        root,
-        text="Many faces",
-        variable=many_faces_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "many_faces", many_faces_value.get()),
-            save_switch_states(),
-        ),
-    )
-    many_faces_switch.place(relx=0.6, rely=0.65)
+    # Create buttons
+    buttons = [
+        ("Start", lambda: analyze_target(start, root)),
+        ("Reset", reset_face_mapping),
+        ("Destroy", destroy),
+        ("Preview", toggle_preview)
+    ]
 
-    color_correction_value = ctk.BooleanVar(value=modules.globals.color_correction)
-    color_correction_switch = ctk.CTkSwitch(
-        root,
-        text="Fix Blueish Cam",
-        variable=color_correction_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "color_correction", color_correction_value.get()),
-            save_switch_states(),
-        ),
-    )
-    color_correction_switch.place(relx=0.6, rely=0.70)
+    for i, (text, command) in enumerate(buttons):
+        btn = ctk.CTkButton(
+            button_frame, text=text, cursor="hand2",
+            command=command
+        )
+        btn.grid(row=0, column=i, padx=5, sticky="ew")
 
-    #    nsfw_value = ctk.BooleanVar(value=modules.globals.nsfw_filter)
-    #    nsfw_switch = ctk.CTkSwitch(root, text='NSFW filter', variable=nsfw_value, cursor='hand2', command=lambda: setattr(modules.globals, 'nsfw_filter', nsfw_value.get()))
-    #    nsfw_switch.place(relx=0.6, rely=0.7)
+def create_camera_section(root: ctk.CTk) -> None:
+    """Create the camera selection section"""
+    camera_frame = ctk.CTkFrame(root, fg_color="transparent")
+    camera_frame.place(relx=0.1, rely=0.86, relwidth=0.8, relheight=0.05)
 
-    map_faces = ctk.BooleanVar(value=modules.globals.map_faces)
-    map_faces_switch = ctk.CTkSwitch(
-        root,
-        text="Map faces",
-        variable=map_faces,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "map_faces", map_faces.get()),
-            save_switch_states(),
-        ),
-    )
-    map_faces_switch.place(relx=0.1, rely=0.75)
-
-    show_fps_value = ctk.BooleanVar(value=modules.globals.show_fps)
-    show_fps_switch = ctk.CTkSwitch(
-        root,
-        text="Show FPS",
-        variable=show_fps_value,
-        cursor="hand2",
-        command=lambda: (
-            setattr(modules.globals, "show_fps", show_fps_value.get()),
-            save_switch_states(),
-        ),
-    )
-    show_fps_switch.place(relx=0.6, rely=0.75)
-
-    mouth_mask_var = ctk.BooleanVar(value=modules.globals.mouth_mask)
-    mouth_mask_switch = ctk.CTkSwitch(
-        root,
-        text="Mouth Mask",
-        variable=mouth_mask_var,
-        cursor="hand2",
-        command=lambda: setattr(modules.globals, "mouth_mask", mouth_mask_var.get()),
-    )
-    mouth_mask_switch.place(relx=0.1, rely=0.55)
-
-    show_mouth_mask_box_var = ctk.BooleanVar(value=modules.globals.show_mouth_mask_box)
-    show_mouth_mask_box_switch = ctk.CTkSwitch(
-        root,
-        text="Show Mouth Mask Box",
-        variable=show_mouth_mask_box_var,
-        cursor="hand2",
-        command=lambda: setattr(
-            modules.globals, "show_mouth_mask_box", show_mouth_mask_box_var.get()
-        ),
-    )
-    show_mouth_mask_box_switch.place(relx=0.6, rely=0.55)
-
-    start_button = ctk.CTkButton(
-        root, text="Start", cursor="hand2", command=lambda: analyze_target(start, root)
-    )
-    start_button.place(relx=0.15, rely=0.80, relwidth=0.2, relheight=0.05)
-
-    stop_button = ctk.CTkButton(
-        root, text="Destroy", cursor="hand2", command=lambda: destroy()
-    )
-    stop_button.place(relx=0.4, rely=0.80, relwidth=0.2, relheight=0.05)
-
-    preview_button = ctk.CTkButton(
-        root, text="Preview", cursor="hand2", command=lambda: toggle_preview()
-    )
-    preview_button.place(relx=0.65, rely=0.80, relwidth=0.2, relheight=0.05)
-
-    # --- Camera Selection ---
-    camera_label = ctk.CTkLabel(root, text="Select Camera:")
-    camera_label.place(relx=0.1, rely=0.86, relwidth=0.2, relheight=0.05)
+    camera_label = ctk.CTkLabel(camera_frame, text="Select Camera:")
+    camera_label.grid(row=0, column=0, padx=5)
 
     available_cameras = get_available_cameras()
-    # Convert camera indices to strings for CTkOptionMenu
     available_camera_indices, available_camera_strings = available_cameras
     camera_variable = ctk.StringVar(
-        value=(
-            available_camera_strings[0]
-            if available_camera_strings
-            else "No cameras found"
-        )
+        value=available_camera_strings[0] if available_camera_strings else "No cameras found"
     )
+    
     camera_optionmenu = ctk.CTkOptionMenu(
-        root, variable=camera_variable, values=available_camera_strings
+        camera_frame, variable=camera_variable,
+        values=available_camera_strings
     )
-    camera_optionmenu.place(relx=0.35, rely=0.86, relwidth=0.25, relheight=0.05)
+    camera_optionmenu.grid(row=0, column=1, padx=5, sticky="ew")
 
     live_button = ctk.CTkButton(
-        root,
-        text="Live",
-        cursor="hand2",
+        camera_frame, text="Live", cursor="hand2",
         command=lambda: webcam_preview(
             root,
-            available_camera_indices[
-                available_camera_strings.index(camera_variable.get())
-            ],
-        ),
+            available_camera_indices[available_camera_strings.index(camera_variable.get())]
+        )
     )
-    live_button.place(relx=0.65, rely=0.86, relwidth=0.2, relheight=0.05)
-    # --- End Camera Selection ---
+    live_button.grid(row=0, column=2, padx=5)
 
+    camera_frame.grid_columnconfigure(1, weight=1)
+
+def create_status_section(root: ctk.CTk) -> None:
+    """Create the status and donate section"""
+    global status_label
+    
     status_label = ctk.CTkLabel(root, text=None, justify="center")
     status_label.place(relx=0.1, rely=0.9, relwidth=0.8)
 
@@ -357,7 +274,23 @@ def create_root(start: Callable[[], None], destroy: Callable[[], None]) -> ctk.C
         "<Button>", lambda event: webbrowser.open("https://paypal.me/hacksider")
     )
 
-    return root
+def create_switch(root: ctk.CTk, text: str, attr_name: str, x: float, y: float, is_fp_ui: bool = False) -> None:
+    """Helper function to create a switch with consistent styling"""
+    value = modules.globals.fp_ui.get(attr_name, False) if is_fp_ui else getattr(modules.globals, attr_name)
+    var = ctk.BooleanVar(value=value)
+    
+    switch = ctk.CTkSwitch(
+        root,
+        text=text,
+        variable=var,
+        cursor="hand2",
+        command=lambda: (
+            update_tumbler(attr_name, var.get()) if is_fp_ui
+            else setattr(modules.globals, attr_name, var.get()),
+            save_switch_states(),
+        )
+    )
+    switch.place(relx=x, rely=y)
 
 
 def analyze_target(start: Callable[[], None], root: ctk.CTk):
@@ -1090,3 +1023,26 @@ def update_webcam_target(
         else:
             update_pop_live_status("Face could not be detected in last upload!")
         return map
+
+def reset_face_mapping():
+    """Reset all face mapping state and clean up resources"""
+    global PREVIEW
+    
+    # Clear global state
+    modules.globals.souce_target_map = []
+    modules.globals.simple_map = {}
+    modules.globals.source_path = None
+    modules.globals.target_path = None
+    
+    # Reset preview windows
+    if PREVIEW and PREVIEW.state() == 'normal':
+        PREVIEW.withdraw()
+    
+    # Reset UI labels
+    if source_label:
+        source_label.configure(image=None)
+    if target_label:
+        target_label.configure(image=None)
+    
+    # Update status
+    update_status("Face mapping reset")
