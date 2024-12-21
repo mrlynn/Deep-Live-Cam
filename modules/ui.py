@@ -759,13 +759,27 @@ def get_available_cameras():
     """Returns a list of available camera names and indices."""
     camera_indices = []
     camera_names = []
-
+    
+    # On macOS, typically only check first few indices
+    max_cameras = 2  # Only check indices 0 and 1 on Mac
+    
     for camera in enumerate_cameras():
+        if camera.index >= max_cameras:
+            break
         cap = cv2.VideoCapture(camera.index)
         if cap.isOpened():
             camera_indices.append(camera.index)
             camera_names.append(camera.name)
             cap.release()
+    
+    # If no cameras found, at least try index 0
+    if not camera_indices:
+        cap = cv2.VideoCapture(0)
+        if cap.isOpened():
+            camera_indices.append(0)
+            camera_names.append("Default Camera")
+            cap.release()
+            
     return (camera_indices, camera_names)
 
 
